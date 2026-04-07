@@ -121,7 +121,11 @@ export const generateConceptExplanation = async (req, res) => {
       contents: prompt,
     });
 
-    let rawText = response.text;
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
+    const rawText = parts
+      .filter((p) => !p.thought)
+      .map((p) => p.text ?? "")
+      .join("");
 
     // Clean it: Remove backticks, json markers, and any extra formatting
     const cleanedText = rawText

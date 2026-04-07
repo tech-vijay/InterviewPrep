@@ -6,47 +6,41 @@ import Session from "../models/session-model.js";
 // @access  Private
 export const createSession = async (req, res) => {
   try {
-    console.log(1);
     const { role, experience, topicsToFocus, description, questions } =
       req.body;
-    const userId = req.user._id; // Assuming you have a middleware setting req.user
+    const userId = req.user._id;
 
     // Create the session
     const session = await Session.create({
       user: userId,
       role,
       experience,
-      topicsToFocus,
-      description,
+      topicsToFocus: topicsToFocus || [],
+      description: description || "",
     });
 
-    // Create questions and collect their IDs
-    const questionDocs = await Promise.all(
-      questions.map(async (q) => {
-        const question = await Question.create({
-          session: session._id,
-          question: q.question,
-          answer: q.answer || "",
-          note: q.note || "",
-          isPinned: q.isPinned || false,
-        });
-        return question._id;
-      }),
-    );
+    // Create questions if provided
+    let questionIds = [];
+    if (questions && Array.isArray(questions) && questions.length > 0) {
+      const questionDocs = await Promise.all(
+        questions.map(async (q) => {
+          const question = await Question.create({
+            session: session._id,
+            question: q.question,
+            answer: q.answer || "",
+            note: q.note || "",
+            isPinned: q.isPinned || false,
+          });
+          return question._id;
+        }),
+      );
+      questionIds = questionDocs;
+    }
 
     // Update session with question IDs
-    session.questions = questionDocs;
+    session.questions = questionIds;
     await session.save();
 
-    // Return the populated session
-    // const populatedSession = await Session.findById(session._id).populate(
-    //   "questions",
-    // );
-
-    // res.status(201).json({
-    //   success: true,
-    //   data: populatedSession,
-    // });
     res.status(201).json({
       success: true,
       session,
